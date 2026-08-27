@@ -75,7 +75,8 @@ def test_gateway_routes_through_providers() -> None:
 @pytest.mark.xfail(reason="Students must implement metrics.write_csv()")
 def test_metrics_csv_export() -> None:
     from reliability_lab.metrics import RunMetrics
-    import tempfile, os
+    import os
+    import tempfile
     m = RunMetrics(total_requests=10, successful_requests=8, failed_requests=2, latencies_ms=[100.0])
     m.scenarios = {"baseline": "pass"}
     path = os.path.join(tempfile.mkdtemp(), "test.csv")
