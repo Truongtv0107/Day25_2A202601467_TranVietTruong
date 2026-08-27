@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 from statistics import median
@@ -21,6 +22,8 @@ class RunMetrics(BaseModel):
     estimated_cost_saved: float = 0.0
     latencies_ms: list[float] = Field(default_factory=list)
     scenarios: dict[str, str] = Field(default_factory=dict)
+    scenario_metrics: dict[str, dict[str, object]] = Field(default_factory=dict)
+    cache_comparison: dict[str, dict[str, object]] = Field(default_factory=dict)
 
     @property
     def availability(self) -> float:
@@ -45,6 +48,11 @@ class RunMetrics(BaseModel):
     def to_report_dict(self) -> dict[str, object]:
         return {
             "total_requests": self.total_requests,
+            "successful_requests": self.successful_requests,
+            "failed_requests": self.failed_requests,
+            "fallback_successes": self.fallback_successes,
+            "static_fallbacks": self.static_fallbacks,
+            "cache_hits": self.cache_hits,
             "availability": round(self.availability, 4),
             "error_rate": round(self.error_rate, 4),
             "latency_p50_ms": round(self.percentile(50), 2),
@@ -57,22 +65,38 @@ class RunMetrics(BaseModel):
             "estimated_cost": round(self.estimated_cost, 6),
             "estimated_cost_saved": round(self.estimated_cost_saved, 6),
             "scenarios": self.scenarios,
+            "scenario_metrics": self.scenario_metrics,
+            "cache_comparison": self.cache_comparison,
         }
 
     def write_json(self, path: str | Path) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        Path(path).write_text(json.dumps(self.to_report_dict(), indent=2, ensure_ascii=False))
+        Path(path).write_text(
+            json.dumps(self.to_report_dict(), indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
     def write_csv(self, path: str | Path) -> None:
         """Export metrics to CSV format.
 
-        TODO(student): Implement CSV export:
+        CSV export behavior:
         1. Get report dict via self.to_report_dict()
         2. Flatten the "scenarios" dict: each scenario becomes "scenario_{name}" column
         3. Write a single-row CSV with csv.DictWriter (import csv at top of file)
         4. Create parent directories if needed
         """
-        raise NotImplementedError("TODO: implement write_csv()")
+        report = self.to_report_dict()
+        scenarios = report.pop("scenarios")
+        if isinstance(scenarios, dict):
+            report.update({f"scenario_{name}": status for name, status in scenarios.items()})
+        for nested_name in ("scenario_metrics", "cache_comparison"):
+            report[nested_name] = json.dumps(report[nested_name], ensure_ascii=False, sort_keys=True)
+
+        output_path = Path(path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("w", newline="", encoding="utf-8") as output:
+            writer = csv.DictWriter(output, fieldnames=list(report))
+            writer.writeheader()
+            writer.writerow(report)
 
 
 def percentile(values: Iterable[float], q: float) -> float:
