@@ -1,0 +1,12 @@
+Offline execution of repository test functions
+
+Circuit breaker: 12 passed
+In-memory cache: 9 passed
+Gateway contract: 4 passed
+Configuration: 2 passed
+Metrics: 2 passed
+TODO requirements: 7 passed
+
+Result: 36 passed, 0 failed
+
+Redis tests are configured to run in GitHub Actions with a Redis 7 service.
